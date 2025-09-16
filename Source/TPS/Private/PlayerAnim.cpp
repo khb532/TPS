@@ -7,6 +7,15 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerState.h"
 
+UPlayerAnim::UPlayerAnim()
+{
+	ConstructorHelpers::FObjectFinder<UAnimMontage> tmp(TEXT("/Script/Engine.AnimMontage'/Game/Animation/My_Fire_Rifle_Ironsights_Montage.My_Fire_Rifle_Ironsights_Montage'"));
+	if (tmp.Succeeded())
+	{
+		AttackMontage = tmp.Object;
+	}
+}
+
 void UPlayerAnim::NativeUpdateAnimation(float DeltaSeconds)
 {
 	Super::NativeUpdateAnimation(DeltaSeconds);
@@ -30,4 +39,9 @@ void UPlayerAnim::NativeUpdateAnimation(float DeltaSeconds)
 		isInAir = cmp->IsFalling();
 	}
 
+}
+
+void UPlayerAnim::PlayAttackAnim()
+{
+	Montage_Play(AttackMontage);
 }

@@ -98,6 +98,12 @@ public:
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Particle")
 	class UParticleSystem* bulletvfx;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Fire")
+	TSubclassOf<class UCameraShakeBase> fireshakeclass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Fire")
+	class USoundBase* firesound;
 	
 	bool bUsingGrenade = false;
 	// 

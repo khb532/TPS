@@ -13,19 +13,26 @@ AEnemy::AEnemy()
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	ConstructorHelpers::FObjectFinder<USkeletalMesh> tmpMesh(TEXT("/Script/Engine.SkeletalMesh'/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple.SKM_Manny_Simple'"));
+	ConstructorHelpers::FObjectFinder<USkeletalMesh> tmpMesh(TEXT("/Script/Engine.SkeletalMesh'/Game/Enemy/Model/vampire_a_lusth.vampire_a_lusth'"));
 	if (tmpMesh.Succeeded())
 	{
 		GetMesh()->SetSkeletalMesh(tmpMesh.Object);
-		GetMesh()->SetRelativeLocation(FVector(0.f,0.f, -87.f));
+		GetMesh()->SetRelativeLocation(FVector(0.f,0.f, -85.f));
 		GetMesh()->SetRelativeRotation(FRotator(0.f,-90.f,0.f));
+		GetMesh()->SetRelativeScale3D(FVector(0.8f));
 	}
 
-	ConstructorHelpers::FObjectFinder<UMaterial> tmpmat(TEXT("'/Engine/Tutorial/SubEditors/TutorialAssets/Character/TutorialTPP_Mat.TutorialTPP_Mat'"));
+	ConstructorHelpers::FObjectFinder<UMaterial> tmpmat(TEXT("/Script/Engine.Material'/Game/Enemy/Model/Vampire_MAT.Vampire_MAT'"));
 	if (tmpmat.Succeeded())
 	{
 		GetMesh()->SetMaterial(0, tmpmat.Object);
 		GetMesh()->SetMaterial(1, tmpmat.Object);
+	}
+
+	ConstructorHelpers::FClassFinder<UAnimInstance> tmpanim(TEXT("/Script/Engine.AnimBlueprint'/Game/Blueprints/ABP_EnemyAnim.ABP_EnemyAnim_C'"));
+	if (tmpanim.Succeeded())
+	{
+		GetMesh()->SetAnimInstanceClass(tmpanim.Class);
 	}
 
 	GetCharacterMovement()->bOrientRotationToMovement = true;

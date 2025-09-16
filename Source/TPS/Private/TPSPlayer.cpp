@@ -9,7 +9,10 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "PlayerAnim.h"
 #include "Blueprint/UserWidget.h"
+#include "InputMappingContext.h"
+#include "InputAction.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystem.h"
@@ -23,12 +26,25 @@ ATPSPlayer::ATPSPlayer()
 	PrimaryActorTick.bCanEverTick = true;
 
 	ConstructorHelpers::FObjectFinder<USkeletalMesh> tmpMesh(TEXT("/Script/Engine.SkeletalMesh'/Game/Characters/Mannequins/Meshes/SKM_Quinn_Simple.SKM_Quinn_Simple'"));
-	if (tmpMesh.Succeeded())
-	{
-		GetMesh()->SetSkeletalMesh(tmpMesh.Object);
-		GetMesh()->SetRelativeLocation(FVector(0.f,0.f, -87.f));
-		GetMesh()->SetRelativeRotation(FRotator(0.f,-90.f,0.f));
-	}
+    if (tmpMesh.Succeeded())
+    {
+        GetMesh()->SetSkeletalMesh(tmpMesh.Object);
+        GetMesh()->SetRelativeLocation(FVector(0.f,0.f, -87.f));
+        GetMesh()->SetRelativeRotation(FRotator(0.f,-90.f,0.f));
+
+        // Prefer AnimBlueprint (ABP_Player) if available; fallback to native class
+        static ConstructorHelpers::FClassFinder<UAnimInstance> TmpABP(
+            TEXT("/Game/Blueprints/ABP_Player.ABP_Player_C"));
+        if (TmpABP.Succeeded())
+        {
+            GetMesh()->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+            GetMesh()->SetAnimInstanceClass(TmpABP.Class);
+        }
+        else
+        {
+            GetMesh()->SetAnimInstanceClass(UPlayerAnim::StaticClass());
+        }
+    }
 	
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->SetupAttachment(RootComponent);
@@ -38,23 +54,25 @@ ATPSPlayer::ATPSPlayer()
 	Camera->SetupAttachment(SpringArm);
 	
 	fpgun = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FPGun"));
-	fpgun->SetupAttachment(GetMesh());
+	fpgun->SetupAttachment(GetMesh(), TEXT("HandGrip_R"));
 	ConstructorHelpers::FObjectFinder<USkeletalMesh> tmpfp(TEXT("/Script/Engine.SkeletalMesh'/Game/FPWeapon/Mesh/SK_FPGun.SK_FPGun'"));
 	if (tmpfp.Succeeded())
 	{
 		fpgun->SetSkeletalMesh(tmpfp.Object);
-		fpgun->SetRelativeLocation(FVector(40.f,0.f,90.f));
+		fpgun->SetRelativeLocation(FVector(2.780775f,1.505752f,-2.f));
+		fpgun->SetRelativeRotation(FRotator(4.980925,14.980998,-0.436880));
 	}
 	
 	sniper = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Sniper"));
-	sniper->SetupAttachment(GetMesh());
+	sniper->SetupAttachment(GetMesh(), TEXT("HandGrip_R"));
 	ConstructorHelpers::FObjectFinder<UStaticMesh> tmpsniper(TEXT("/Script/Engine.StaticMesh'/Game/SniperGun/sniper11.sniper11'"));
 	ConstructorHelpers::FObjectFinder<UMaterial> tmpmat(TEXT("/Script/Engine.Material'/Game/SniperGun/sniper1.sniper1'"));
 	if (tmpsniper.Succeeded() && tmpmat.Succeeded())
 	{
 		sniper->SetStaticMesh(tmpsniper.Object);
-		sniper->SetRelativeLocation(FVector(-40.f,0.f,90.f));
-		sniper->SetRelativeScale3D(FVector(0.2f));
+		sniper->SetRelativeLocation(FVector(-8.391204,29.543566,5.901428));
+		sniper->SetRelativeScale3D(FVector(0.150000,0.150000,0.150000));
+		sniper->SetRelativeRotation(FRotator(4.980925,14.563120,-5.019002)); 
 		sniper->SetMaterial(0, tmpmat.Object);
 	}
 	
@@ -64,6 +82,10 @@ ATPSPlayer::ATPSPlayer()
 	if (tmpvfx.Succeeded())
 		bulletvfx = tmpvfx.Object;
 
+	static ConstructorHelpers::FObjectFinder<USoundBase> tmpsfx(TEXT("/Script/Engine.SoundWave'/Game/SniperGun/Rifle.Rifle'"));
+	if (tmpsfx.Succeeded())
+		firesound = tmpsfx.Object;
+
 	// Crosshair UI Constructor
 	static ConstructorHelpers::FClassFinder<UUserWidget> _sniperwidget(TEXT("/Script/UMGEditor.WidgetBlueprint'/Game/UI/WBP_SniperUI.WBP_SniperUI_C'"));
 	if (_sniperwidget.Succeeded())
@@ -72,6 +94,51 @@ ATPSPlayer::ATPSPlayer()
 	static ConstructorHelpers::FClassFinder<UUserWidget> _crosswidget(TEXT("/Script/UMGEditor.WidgetBlueprint'/Game/UI/WBP_CrosshairUI.WBP_CrosshairUI_C'"));
 	if (_crosswidget.Succeeded())
 		CrosshairUIClass = _crosswidget.Class;
+
+	static ConstructorHelpers::FClassFinder<UCameraShakeBase> tmpshake(TEXT("/Script/Engine.Blueprint'/Game/Blueprints/BP_CameraShake.BP_CameraShake'_C'"));
+	if (tmpshake.Succeeded())
+		fireshakeclass = tmpshake.Class;
+	
+	static ConstructorHelpers::FObjectFinder<UInputMappingContext> tmpimc(TEXT("/Script/EnhancedInput.InputMappingContext'/Game/TPSInput/IMC_TPS.IMC_TPS'"));
+	if (tmpimc.Succeeded())
+		imc_tps = tmpimc.Object;
+	
+	static ConstructorHelpers::FObjectFinder<UInputAction> tmpiamove(TEXT("/Script/EnhancedInput.InputAction'/Game/TPSInput/IA_TPSMove.IA_TPSMove'"));
+	if (tmpiamove.Succeeded())
+		ia_move = tmpiamove.Object;
+
+	static ConstructorHelpers::FObjectFinder<UInputAction> tmpiarun(TEXT("/Script/EnhancedInput.InputAction'/Game/TPSInput/IA_TPSRun.IA_TPSRun'"));
+	if ( tmpiarun.Succeeded())
+		ia_run = tmpiarun.Object;
+
+	static ConstructorHelpers::FObjectFinder<UInputAction> tmpiaturn(TEXT("/Script/EnhancedInput.InputAction'/Game/TPSInput/IA_TPSTurn.IA_TPSTurn'"));
+	if ( tmpiaturn.Succeeded())
+		ia_turn = tmpiaturn.Object;
+
+	static ConstructorHelpers::FObjectFinder<UInputAction> tmpialookup(TEXT("/Script/EnhancedInput.InputAction'/Game/TPSInput/IA_TPSLookup.IA_TPSLookup'"));
+	if ( tmpialookup.Succeeded())
+		ia_lookup = tmpialookup.Object;
+
+	static ConstructorHelpers::FObjectFinder<UInputAction> tmpiajump(TEXT("/Script/EnhancedInput.InputAction'/Game/TPSInput/IA_TPSJump.IA_TPSJump'"));
+	if ( tmpiajump.Succeeded())
+		ia_jump = tmpiajump.Object;
+
+	static ConstructorHelpers::FObjectFinder<UInputAction> tmpiafire(TEXT("/Script/EnhancedInput.InputAction'/Game/TPSInput/IA_TPSFire.IA_TPSFire'"));
+	if ( tmpiafire.Succeeded())
+		ia_fire = tmpiafire.Object;
+
+	static ConstructorHelpers::FObjectFinder<UInputAction> tmpiagren(TEXT("/Script/EnhancedInput.InputAction'/Game/TPSInput/IA_TPSGrenadeGun.IA_TPSGrenadeGun'"));
+	if ( tmpiagren.Succeeded())
+		ia_grenadegun = tmpiagren.Object;
+
+	static ConstructorHelpers::FObjectFinder<UInputAction> tmpiasniper(TEXT("/Script/EnhancedInput.InputAction'/Game/TPSInput/IA_TPSSniperGun.IA_TPSSniperGun'"));
+	if ( tmpiasniper.Succeeded())
+		ia_snipergun = tmpiasniper.Object;
+
+	static ConstructorHelpers::FObjectFinder<UInputAction> tmpiasnimode(TEXT("/Script/EnhancedInput.InputAction'/Game/TPSInput/IA_TPSSniperMode.IA_TPSSniperMode'"));
+	if ( tmpiasnimode.Succeeded())
+		ia_snipermode = tmpiasnimode.Object;
+	
 }
 
 // Called when the game starts or when spawned
@@ -179,6 +246,19 @@ void ATPSPlayer::JumpInput(const struct FInputActionValue& value)
 
 void ATPSPlayer::FireInput(const struct FInputActionValue& value)
 {
+	//Anim play
+	auto anim = Cast<UPlayerAnim>(GetMesh()->GetAnimInstance());
+	if (anim)
+	{
+		anim->PlayAttackAnim();
+	}
+	// Camera Shake
+	auto controller = GetWorld()->GetFirstPlayerController();
+	controller->PlayerCameraManager->StartCameraShake(fireshakeclass);
+
+	// sfx
+	UGameplayStatics::PlaySound2D(GetWorld(), firesound);
+	
 	FTransform firepos = fpgun->GetSocketTransform(TEXT("FirePosition"));
 
 	if(bUsingGrenade)
