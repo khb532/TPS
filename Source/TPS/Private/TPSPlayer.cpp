@@ -1,6 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "TPSPlayer.h"
 
 #include "Bullet.h"
@@ -13,16 +10,15 @@
 #include "Blueprint/UserWidget.h"
 #include "InputMappingContext.h"
 #include "InputAction.h"
+#include "PlayerMoveComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystem.h"
 #include "TPS/TPS.h"
 
 
-// Sets default values
 ATPSPlayer::ATPSPlayer()
 {
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
 	ConstructorHelpers::FObjectFinder<USkeletalMesh> tmpMesh(TEXT("/Script/Engine.SkeletalMesh'/Game/Characters/Mannequins/Meshes/SKM_Quinn_Simple.SKM_Quinn_Simple'"));
@@ -95,7 +91,7 @@ ATPSPlayer::ATPSPlayer()
 	if (_crosswidget.Succeeded())
 		CrosshairUIClass = _crosswidget.Class;
 
-	static ConstructorHelpers::FClassFinder<UCameraShakeBase> tmpshake(TEXT("/Script/Engine.Blueprint'/Game/Blueprints/BP_CameraShake.BP_CameraShake'_C'"));
+	static ConstructorHelpers::FClassFinder<UCameraShakeBase> tmpshake(TEXT("/Script/Engine.Blueprint'/Game/Blueprints/BP_CameraShake.BP_CameraShake_C'"));
 	if (tmpshake.Succeeded())
 		fireshakeclass = tmpshake.Class;
 	
@@ -103,26 +99,6 @@ ATPSPlayer::ATPSPlayer()
 	if (tmpimc.Succeeded())
 		imc_tps = tmpimc.Object;
 	
-	static ConstructorHelpers::FObjectFinder<UInputAction> tmpiamove(TEXT("/Script/EnhancedInput.InputAction'/Game/TPSInput/IA_TPSMove.IA_TPSMove'"));
-	if (tmpiamove.Succeeded())
-		ia_move = tmpiamove.Object;
-
-	static ConstructorHelpers::FObjectFinder<UInputAction> tmpiarun(TEXT("/Script/EnhancedInput.InputAction'/Game/TPSInput/IA_TPSRun.IA_TPSRun'"));
-	if ( tmpiarun.Succeeded())
-		ia_run = tmpiarun.Object;
-
-	static ConstructorHelpers::FObjectFinder<UInputAction> tmpiaturn(TEXT("/Script/EnhancedInput.InputAction'/Game/TPSInput/IA_TPSTurn.IA_TPSTurn'"));
-	if ( tmpiaturn.Succeeded())
-		ia_turn = tmpiaturn.Object;
-
-	static ConstructorHelpers::FObjectFinder<UInputAction> tmpialookup(TEXT("/Script/EnhancedInput.InputAction'/Game/TPSInput/IA_TPSLookup.IA_TPSLookup'"));
-	if ( tmpialookup.Succeeded())
-		ia_lookup = tmpialookup.Object;
-
-	static ConstructorHelpers::FObjectFinder<UInputAction> tmpiajump(TEXT("/Script/EnhancedInput.InputAction'/Game/TPSInput/IA_TPSJump.IA_TPSJump'"));
-	if ( tmpiajump.Succeeded())
-		ia_jump = tmpiajump.Object;
-
 	static ConstructorHelpers::FObjectFinder<UInputAction> tmpiafire(TEXT("/Script/EnhancedInput.InputAction'/Game/TPSInput/IA_TPSFire.IA_TPSFire'"));
 	if ( tmpiafire.Succeeded())
 		ia_fire = tmpiafire.Object;
@@ -138,10 +114,12 @@ ATPSPlayer::ATPSPlayer()
 	static ConstructorHelpers::FObjectFinder<UInputAction> tmpiasnimode(TEXT("/Script/EnhancedInput.InputAction'/Game/TPSInput/IA_TPSSniperMode.IA_TPSSniperMode'"));
 	if ( tmpiasnimode.Succeeded())
 		ia_snipermode = tmpiasnimode.Object;
+
+	// MoveComp
+	MoveComp = CreateDefaultSubobject<UPlayerMoveComponent>(TEXT("MoveComp"));;
 	
 }
 
-// Called when the game starts or when spawned
 void ATPSPlayer::BeginPlay()
 {
 	Super::BeginPlay();
@@ -171,78 +149,41 @@ void ATPSPlayer::BeginPlay()
 	// sniper active
 	ChangeToSniperGun(FInputActionValue());
 
-	// Velocity initialize
-	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+	
 	
 }
 
-// Called every frame
 void ATPSPlayer::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	Direction = FTransform(GetControlRotation()).TransformVector(Direction);
 	
-	Direction.Normalize();
-	/*SetActorLocation(GetActorLocation() + Direction * Speed * DeltaTime, true);*/
-	AddMovementInput(Direction);
-	Direction = FVector::ZeroVector;
 }
 
-// Called to bind functionality to input
 void ATPSPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-	auto* playerinput = Cast<UEnhancedInputComponent>(PlayerInputComponent);
+	UEnhancedInputComponent* playerinput = Cast<UEnhancedInputComponent>(PlayerInputComponent);
 	if (playerinput)
 	{
-		playerinput->BindAction(ia_move, ETriggerEvent::Triggered, this, &ATPSPlayer::MoveInput);
-		playerinput->BindAction(ia_turn, ETriggerEvent::Triggered, this, &ATPSPlayer::TurnInput);
-		playerinput->BindAction(ia_lookup, ETriggerEvent::Triggered, this, &ATPSPlayer::LookUpInput);
-		playerinput->BindAction(ia_jump, ETriggerEvent::Started, this, &ATPSPlayer::JumpInput);
+		MoveComp->SetInputBinding(playerinput);
+		
+		
 		playerinput->BindAction(ia_fire, ETriggerEvent::Started, this, &ATPSPlayer::FireInput);
 		playerinput->BindAction(ia_grenadegun, ETriggerEvent::Started, this, &ATPSPlayer::ChangeToGrenadeGun);
 		playerinput->BindAction(ia_snipergun, ETriggerEvent::Started, this, &ATPSPlayer::ChangeToSniperGun);
 		playerinput->BindAction(ia_snipermode, ETriggerEvent::Started, this, &ATPSPlayer::SniperModeInput);
 		playerinput->BindAction(ia_snipermode, ETriggerEvent::Completed, this, &ATPSPlayer::SniperModeInput);
-		playerinput->BindAction(ia_run, ETriggerEvent::Started, this, &ATPSPlayer::RunInput);
-		playerinput->BindAction(ia_run, ETriggerEvent::Completed, this, &ATPSPlayer::RunInput);
+		
+		
 	}
 
 }
 
-void ATPSPlayer::MoveInput(const struct FInputActionValue& value)
-{
-	FVector2D axis = value.Get<FVector2D>();
-	Direction.X = axis.X;
-	Direction.Y = axis.Y;
-}
 
-void ATPSPlayer::RunInput(const struct FInputActionValue& value)
-{
-	bool isPressed = value.Get<bool>();
-	if (isPressed)
-		GetCharacterMovement()->MaxWalkSpeed = RunSpeed;
-	else
-		GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
-		
-}
 
-void ATPSPlayer::TurnInput(const struct FInputActionValue& value)
-{
-	AddControllerYawInput(value.Get<float>());
-}
 
-void ATPSPlayer::LookUpInput(const struct FInputActionValue& value)
-{
-	AddControllerPitchInput(value.Get<float>());
-}
-
-void ATPSPlayer::JumpInput(const struct FInputActionValue& value)
-{
-	Jump();
-}
 
 void ATPSPlayer::FireInput(const struct FInputActionValue& value)
 {
