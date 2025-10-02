@@ -1,5 +1,4 @@
 #include "PlayerMoveComponent.h"
-
 #include "EnhancedInputComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Pawn.h"
@@ -102,9 +101,7 @@ void UPlayerMoveComponent::RunInput(const struct FInputActionValue& value)
 {
     bool isPressed = value.Get<bool>();
     if (!movement)
-    {
         return;
-    }
 
     movement->MaxWalkSpeed = isPressed ? RunSpeed : WalkSpeed;
         

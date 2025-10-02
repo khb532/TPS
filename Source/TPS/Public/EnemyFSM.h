@@ -76,8 +76,9 @@ public:
 	void DieState();
 
 	// 피격시 호출될 이벤트 함수 -> 콜백
-	UPROPERTY(EditDefaultsOnly, Category=FSM)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category=FSM)
 	int32 MAX_HP = 3;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=FSM)
 	int32 hp = MAX_HP;
 
 	// 필요속성 : 넉백 파워
@@ -92,4 +93,8 @@ public:
 
 	// 아래로 내려가도 되면
 	bool bDieProcessing = false;
+
+	UPROPERTY(VisibleAnywhere)
+	class UWidgetComponent* HPBar;
+	
 };

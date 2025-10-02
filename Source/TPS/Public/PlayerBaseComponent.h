@@ -20,10 +20,13 @@ protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
+	virtual void InitializeComponent() override;
+
 public:
 	UPROPERTY()
 	class ACharacter* Owner;
 
 	// 사용자 입력 바인딩 함수
+	UFUNCTION()
 	virtual void SetInputBinding(class UEnhancedInputComponent* playerinput){};
 };

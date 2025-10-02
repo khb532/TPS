@@ -4,6 +4,8 @@
 #include "GameFramework/Actor.h"
 #include "Bullet.generated.h"
 
+class UPlayerFireComponent;
+
 UCLASS()
 class TPS_API ABullet : public AActor
 {
@@ -37,7 +39,9 @@ public:
 	void SetActiveBullet(bool bActive);
 
 	UPROPERTY()
-	class ATPSPlayer * p_Player;
+	class UPlayerFireComponent* OwnerFireComponent = nullptr;
+
+	void SetOwningFireComponent(class UPlayerFireComponent* InComponent);
 
 	virtual void PostEditChangeChainProperty(struct FPropertyChangedChainEvent& PropertyChangedEvent) override;
 };

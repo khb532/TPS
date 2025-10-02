@@ -16,6 +16,7 @@ UEnemyFSM::UEnemyFSM()
 {
 	PrimaryComponentTick.bCanEverTick = true;
 
+	
 }
 
 
@@ -65,6 +66,14 @@ void UEnemyFSM::TickComponent(float DeltaTime, ELevelTick TickType,
 	case EEnemyState::Die:
 		DieState();
 		break;
+	}
+
+	if (HPBar)
+	{
+		FVector Direction = target->GetActorLocation() -
+		me->GetActorLocation();
+		Direction.Z = 0.f;
+		//HPBar->SetRelativeRotation(Direction);
 	}
 }
 
@@ -162,7 +171,8 @@ void UEnemyFSM::AttackState()
 	{
 		// 공격
 		currentTime = 0;
-		PRINTLOG(TEXT("Attack!!!"));
+		if (target)
+			target->OnHitEvent();
 		anim->bAttackPlay = true;
 	}
 
@@ -225,7 +235,7 @@ void UEnemyFSM::DieState()
 void UEnemyFSM::OnDamageProcess(FVector hitDirection)
 {
 	ai->StopMovement();
-	
+	me->OnHit();
 	// 체력
 	hp--;
 

@@ -1,9 +1,8 @@
 #include "Bullet.h"
 
-#include "TPSPlayer.h"
 #include "Components/SphereComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
-#include "Kismet/GameplayStatics.h"
+#include "PlayerFireComponent.h"
 
 
 ABullet::ABullet()
@@ -33,13 +32,7 @@ void ABullet::BeginPlay()
 {
 	Super::BeginPlay();
 
-	p_Player = CastChecked<ATPSPlayer>(UGameplayStatics::GetActorOfClass(GetWorld(), ATPSPlayer::StaticClass()));
-	
 	SetActiveBullet(false);
-	
-	
-	// GetWorldTimerManager().SetTimer(lifetimehandler, this, &ABullet::Destroythis, 2.f);
-	
 }
 
 void ABullet::Tick(float DeltaTime)
@@ -59,14 +52,16 @@ void ABullet::SetActiveBullet(bool bActive)
 		MoveComp->SetComponentTickEnabled(true);
 		MoveComp->Velocity = MoveComp->InitialSpeed * GetActorForwardVector();
 		Collision->SetCollisionEnabled(ECollisionEnabled::Type::QueryAndPhysics);
-		auto DieLambda = [this]()->void
+		auto DieLambda = [this]()
 		{
-			// Destroy();
 			SetActiveBullet(false);
-			p_Player->Mag.Add(this);
+			if (OwnerFireComponent)
+			{
+				OwnerFireComponent->ReturnBulletToPool(this);
+			}
 		};
-		FTimerHandle handler;
-		GetWorldTimerManager().SetTimer(handler, FTimerDelegate::CreateLambda(DieLambda), DestroyTime, false);
+		FTimerHandle Handler;
+		GetWorldTimerManager().SetTimer(Handler, FTimerDelegate::CreateLambda(DieLambda), DestroyTime, false);
 	}
 	else
 	{
@@ -75,6 +70,11 @@ void ABullet::SetActiveBullet(bool bActive)
 		Collision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		
 	}
+}
+
+void ABullet::SetOwningFireComponent(UPlayerFireComponent* InComponent)
+{
+	OwnerFireComponent = InComponent;
 }
 
 void ABullet::PostEditChangeChainProperty(struct FPropertyChangedChainEvent& PropertyChangedEvent)
